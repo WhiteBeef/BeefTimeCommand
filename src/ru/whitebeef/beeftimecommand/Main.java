@@ -16,7 +16,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public class Main extends JavaPlugin implements Runnable {
 
 	public final Logger log = Logger.getLogger("Minecraft");
-	public final String PLUGIN_NAME = "[BeefTimeCommand]";
+	public final String PLUGIN_NAME = "[BeefTimeCommand] ";
 	public HashMap<LocalTime, Boolean> dateList = new HashMap<>();
 	public int CONFIG_MODE = 1;
 
@@ -24,7 +24,7 @@ public class Main extends JavaPlugin implements Runnable {
 	public void onEnable() {
 		File config = new File(getDataFolder() + File.separator + "config.yml");
 		if (!config.exists()) {
-			log.info(PLUGIN_NAME + "Конфиг не найден. Создаю новый");
+			log.info(PLUGIN_NAME + "РљРѕРЅС„РёРі РЅРµ РЅР°Р№РґРµРЅ. РЎРѕР·РґР°СЋ РЅРѕРІС‹Р№");
 			getConfig().options().copyDefaults(true);
 			saveDefaultConfig();
 		}
@@ -32,12 +32,12 @@ public class Main extends JavaPlugin implements Runnable {
 		for (LocalTime time : getArraysWithDate())
 			dateList.put(time, false);
 		Bukkit.getScheduler().scheduleSyncRepeatingTask(this, this, 20 * 60L, 20L);
-		log.info(PLUGIN_NAME + " Успешно включился");
+		log.info(PLUGIN_NAME + " РЈСЃРїРµС€РЅРѕ РІРєР»СЋС‡РёР»СЃСЏ");
 	}
 
 	@Override
 	public void onDisable() {
-		log.info(PLUGIN_NAME + " Успешно выключился");
+		log.info(PLUGIN_NAME + "РЈСЃРїРµС€РЅРѕ РІС‹РєР»СЋС‡РёР»СЃСЏ");
 	}
 
 	@Override
@@ -84,7 +84,7 @@ public class Main extends JavaPlugin implements Runnable {
 					dateListIn.addAll(parseStringToLocalTime(stringTime));
 			}
 		dateListIn = optimizeArrayList(dateListIn);
-		log.info(PLUGIN_NAME + " Загруженное время: " + dateListIn);
+		log.info(PLUGIN_NAME + "Р—Р°РіСЂСѓР¶РµРЅРЅРѕРµ РІСЂРµРјСЏ: " + dateListIn);
 		return dateListIn;
 	}
 
@@ -105,12 +105,12 @@ public class Main extends JavaPlugin implements Runnable {
 				int minute = Integer.parseInt(stringArrayTime[1]);
 				dateListIn.add(LocalTime.of(hour, minute));
 			} catch (NumberFormatException | DateTimeException e) {
-				log.warning(PLUGIN_NAME + " Не удалось считать время " + stringTime
-						+ "! Проверьте правильность конфига! \n Время " + stringTime + " пропущено!");
+				log.warning(PLUGIN_NAME + "РќРµ СѓРґР°Р»РѕСЃСЊ СЃС‡РёС‚Р°С‚СЊ РІСЂРµРјСЏ " + stringTime
+						+ "! РџСЂРѕРІРµСЂСЊС‚Рµ РїСЂР°РІРёР»СЊРЅРѕСЃС‚СЊ РєРѕРЅС„РёРіР°! \n Р’СЂРµРјСЏ " + stringTime + " РїСЂРѕРїСѓС‰РµРЅРѕ!");
 			}
 		} else
-			log.warning(PLUGIN_NAME + " Не удалось считать время " + stringTime
-					+ "! Проверьте правильность конфига! \n Время " + stringTime + " пропущено!");
+			log.warning(PLUGIN_NAME + "РќРµ СѓРґР°Р»РѕСЃСЊ СЃС‡РёС‚Р°С‚СЊ РІСЂРµРјСЏ " + stringTime
+					+ "! РџСЂРѕРІРµСЂСЊС‚Рµ РїСЂР°РІРёР»СЊРЅРѕСЃС‚СЊ РєРѕРЅС„РёРіР°! \n Р’СЂРµРјСЏ " + stringTime + " РїСЂРѕРїСѓС‰РµРЅРѕ!");
 		return dateListIn;
 	}
 }
