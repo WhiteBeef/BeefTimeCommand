@@ -1,6 +1,5 @@
 BeefTimeCommand
 ---
-<h2>Installation</h2>
-Put in server /plugins/ folder
-<h2>Usage</h2>
-/compass <player> adds a compass to your inventory, which points to a chosen player. Right-click to update the location.
+<h3>Установка</h3>
+Закиньте плагин в папку plugins. Настройте конфиг и перезапустите плагин. После успешной установки, в консоль выведется актуальное расписание ([BeefTimeCommand] Загруженное время: [00:05])
+
