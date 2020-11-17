@@ -1,5 +1,14 @@
 name: BeefTimeCommand
-version: 1.0.1
-main: ru.whitebeef.beeftimecommand.Main
+version: 1.1.0
+main: ru.whitebeef.timecommandbeef.Main
 api-version: 1.13
 author: WhiteBeef
+commands:
+  plancommand:
+    usage: /<command> <time> <plancommand>
+    description: Запланировать команду
+    permission: beeftimecommand.plancommand
+permissions:
+  beeftimecommand.plancommand:
+    description: Использование команды /plancommand
+    default: op
