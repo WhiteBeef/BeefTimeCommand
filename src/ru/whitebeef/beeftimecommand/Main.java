@@ -28,7 +28,7 @@ public class Main extends JavaPlugin implements Runnable {
 	public void onEnable() {
 		File config = new File(getDataFolder() + File.separator + "config.yml");
 		if (!config.exists()) {
-			log.info(PLUGIN_NAME + "Конфиг не найден. Создаю новый");
+			log.info(PLUGIN_NAME + "РљРѕРЅС„РёРі РЅРµ РЅР°Р№РґРµРЅ. РЎРѕР·РґР°СЋ РЅРѕРІС‹Р№");
 			getConfig().options().copyDefaults(true);
 			saveDefaultConfig();
 		}
@@ -41,13 +41,13 @@ public class Main extends JavaPlugin implements Runnable {
 		planCommandExecutor.initialize();
 		super.getCommand("plancommand").setExecutor(planCommandExecutor);
 
-		log.info(PLUGIN_NAME + "Успешно включился");
+		log.info(PLUGIN_NAME + "РЈСЃРїРµС€РЅРѕ РІРєР»СЋС‡РёР»СЃСЏ");
 	}
 
 	@Override
 	public void onDisable() {
 		planCommandExecutor.disable();
-		log.info(PLUGIN_NAME + "Успешно выключился");
+		log.info(PLUGIN_NAME + "РЈСЃРїРµС€РЅРѕ РІС‹РєР»СЋС‡РёР»СЃСЏ");
 	}
 
 	@Override
@@ -63,7 +63,6 @@ public class Main extends JavaPlugin implements Runnable {
 						@Override
 						public void run() {
 							dateList.put(date, false);
-							System.out.println(112);
 						}
 					}, 20 * 60L);
 				}
@@ -95,7 +94,7 @@ public class Main extends JavaPlugin implements Runnable {
 					dateListIn.addAll(parseStringToLocalTime(stringTime));
 			}
 		dateListIn = optimizeArrayList(dateListIn);
-		log.info(PLUGIN_NAME + "Загруженное время: " + dateListIn);
+		log.info(PLUGIN_NAME + "Р—Р°РіСЂСѓР¶РµРЅРЅРѕРµ РІСЂРµРјСЏ: " + dateListIn);
 		return dateListIn;
 	}
 
@@ -116,12 +115,12 @@ public class Main extends JavaPlugin implements Runnable {
 				int minute = Integer.parseInt(stringArrayTime[1]);
 				dateListIn.add(LocalTime.of(hour, minute));
 			} catch (NumberFormatException | DateTimeException e) {
-				log.warning(PLUGIN_NAME + "Не удалось считать время " + stringTime
-						+ "! Проверьте правильность конфига! \\n Время " + stringTime + " пропущено!");
+				log.warning(PLUGIN_NAME + "РќРµ СѓРґР°Р»РѕСЃСЊ СЃС‡РёС‚Р°С‚СЊ РІСЂРµРјСЏ " + stringTime
+						+ "! РџСЂРѕРІРµСЂСЊС‚Рµ РїСЂР°РІРёР»СЊРЅРѕСЃС‚СЊ РєРѕРЅС„РёРіР°! \\n Р’СЂРµРјСЏ " + stringTime + " РїСЂРѕРїСѓС‰РµРЅРѕ!");
 			}
 		} else
-			log.warning(PLUGIN_NAME + "Не удалось считать время " + stringTime
-					+ "! Проверьте правильность конфига! \\n Время " + stringTime + " пропущено!");
+			log.warning(PLUGIN_NAME + "РќРµ СѓРґР°Р»РѕСЃСЊ СЃС‡РёС‚Р°С‚СЊ РІСЂРµРјСЏ " + stringTime
+					+ "! РџСЂРѕРІРµСЂСЊС‚Рµ РїСЂР°РІРёР»СЊРЅРѕСЃС‚СЊ РєРѕРЅС„РёРіР°! \\n Р’СЂРµРјСЏ " + stringTime + " РїСЂРѕРїСѓС‰РµРЅРѕ!");
 		return dateListIn;
 	}
 }
