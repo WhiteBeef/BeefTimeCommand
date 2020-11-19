@@ -1,241 +1,153 @@
-package ru.whitebeef.timecommandbeef.commands;
+package ru.whitebeef.timecommandbeef;
 
 import java.io.File;
 import java.io.IOException;
-import java.time.Duration;
+import java.time.DateTimeException;
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
+import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import java.util.logging.Logger;
 
 import org.bukkit.Bukkit;
-import org.bukkit.GameRule;
-import org.bukkit.World;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabExecutor;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.craftbukkit.libs.org.apache.commons.lang3.tuple.Pair;
+import org.bukkit.plugin.java.JavaPlugin;
 
-import ru.whitebeef.timecommandbeef.Main;
+import ru.whitebeef.timecommandbeef.commands.PlanCommandExecutor;
 
-public class PlanCommandExecutor implements TabExecutor {
+public class Main extends JavaPlugin implements Runnable {
 
-	private final Timer timer;
-	private final List<Pair<LocalDateTime, PlannedCommand>> commands = new LinkedList<>();
+	public PlanCommandExecutor planCommandExecutor;
 
-	private static final List<String> digits;
-	private static final Map<String, Duration> timeUnits;
+	public final Logger log = Logger.getLogger("Minecraft");
+	public HashMap<LocalTime, Boolean> dateList = new HashMap<>();
+	public int CONFIG_MODE = 1;
 
-	private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
-	private static final Pattern timePattern = Pattern.compile("\\G([0-9]+[hmsdwy])");
+	@Override
+	public void onEnable() {
+		File config = new File(getDataFolder() + File.separator + "config.yml");
+		if (!config.exists()) {
+			getLogger().warning("Конфиг не найден. Создаю новый");
+			getConfig().options().copyDefaults(true);
+			saveDefaultConfig();
+		}
+		CONFIG_MODE = getConfig().getInt("configMode");
+		for (LocalTime time : getArraysWithDate())
+			dateList.put(time, false);
+		Bukkit.getScheduler().scheduleSyncRepeatingTask(this, this, 20 * 60L, 20L);
 
-	static {
-		digits = Arrays.stream("123456789".split("")).collect(Collectors.toList());
-		timeUnits = new HashMap<>();
-		timeUnits.put("h", Duration.ofHours(1));
-		timeUnits.put("m", Duration.ofMinutes(1));
-		timeUnits.put("s", Duration.ofSeconds(1));
-		timeUnits.put("d", Duration.ofDays(1));
-		timeUnits.put("w", Duration.ofDays(7));
-		timeUnits.put("y", Duration.ofSeconds(31556952));
+		planCommandExecutor = new PlanCommandExecutor();
+		planCommandExecutor.initialize();
+		super.getCommand("plancommand").setExecutor(planCommandExecutor);
 
-	}
+		Bukkit.getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
+			@Override
+			public void run() {
+				try {
+					FileConfiguration commands = new YamlConfiguration();
+					File saveFile = new File(getDataFolder(), "reloadcmds.yml");
+					if (!saveFile.exists()) {
+						getLogger().warning("Файл reloadcmds.yml не найден. Создаю новый");
+						saveFile.createNewFile();
+						commands.load(saveFile);
+						commands.set("commands", new ArrayList<>());
+						commands.save(saveFile);
+					}
+					commands.load(saveFile);
+					for (String command : commands.getStringList("commands"))
+						Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
+				} catch (IOException | InvalidConfigurationException exception) {
+					getLogger().severe("Возникла ошибка при загрузке команд с reloadcmds.yml:");
+					exception.printStackTrace();
+				}
 
-	public PlanCommandExecutor() {
-		timer = new Timer();
+			}
+		}, 0l);
+
+		getLogger().info("Успешно включился");
 	}
 
 	@Override
-	public List<String> onTabComplete(@Nonnull CommandSender sender, @Nonnull Command cmd, @Nonnull String s,
-			@Nonnull String[] args) {
-		switch (args.length) {
-		case 0:
-			return digits;
-		case 1:
-			if (args[0].isEmpty())
-				return digits;
-			String lastChar = args[0].split("")[args[0].length() - 1];
-			if (digits.contains(lastChar)) {
-				return prefix(args[0], timeUnits.keySet());
-			} else if (timeUnits.containsKey(lastChar)) {
-				return prefix(args[0], digits);
-			} else {
-				return new ArrayList<>();
-			}
-		default:
-			return new ArrayList<>();
-		}
+	public void onDisable() {
+		planCommandExecutor.disable();
+		getLogger().info("Успешно выключился");
 	}
 
 	@Override
-	public boolean onCommand(@Nonnull CommandSender sender, @Nonnull Command cmd, @Nonnull String s,
-			@Nonnull String[] args) {
-		if (args.length < 2)
-			return false;
-		LocalDateTime time = parseTime(args[0]);
-		if (time == null)
-			return false;
-		String command = Arrays.stream(args).skip(1).collect(Collectors.joining(" "));
-		plan(command, time);
-		return true;
+	public void run() {
+		LocalTime time = LocalTime.now();
+		for (LocalTime date : dateList.keySet())
+			if (date.getHour() == time.getHour() && Math.abs(date.getMinute() - time.getMinute()) == 0)
+				if (!dateList.get(date)) {
+					for (String command : getCommand(date))
+						Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
+					dateList.put(date, true);
+					Bukkit.getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
+						@Override
+						public void run() {
+							dateList.put(date, false);
+						}
+					}, 20 * 60L);
+				}
+
 	}
 
-	/*
-	 * @param s Время в формате 1h10m...
-	 * 
-	 * @return Время указанное в s в формате LocalDateTime. Если в s не время,
-	 * возвращает null
-	 */
-	@Nullable
-	public static LocalDateTime parseTime(String s) {
-		Duration duration = Duration.ZERO;
-		Matcher matcher = timePattern.matcher(s);
-		while (matcher.find()) {
-			String group = matcher.group();
-			Duration d = timeUnits.get(group.split("")[group.length() - 1]);
-			int multiplier = Integer.parseInt(group.substring(0, group.length() - 1));
-			duration = duration.plus(d.multipliedBy(multiplier));
+	public List<String> getCommand(LocalTime time) {
+		String hour = time.getHour() < 10 ? 0 + "" + time.getHour() : time.getHour() + "";
+		String minute = time.getMinute() < 10 ? 0 + "" + time.getMinute() : time.getMinute() + "";
+		if (CONFIG_MODE == 1)
+			return getConfig().getStringList("CommandsTime." + hour + ":" + minute);
+		if (CONFIG_MODE == 2) {
+			LocalDateTime dateTime = LocalDateTime.now();
+			return getConfig().getStringList(
+					"CommandsTime." + dateTime.getDayOfWeek().toString().toLowerCase() + "." + hour + ":" + minute);
 		}
-		return duration.equals(Duration.ZERO) ? null : LocalDateTime.now().plus(duration);
+		return new ArrayList<String>();
 	}
 
-	private List<String> prefix(String prefix, Collection<String> collection) {
-		return collection.stream().map(s -> prefix + s).collect(Collectors.toList());
-	}
-
-	void plan(String command, LocalDateTime time) {
-		plan(new PlannedCommand(command, UUID.randomUUID()), time);
-	}
-
-	void plan(PlannedCommand cmd, LocalDateTime time) {
-		commands.add(Pair.of(time, cmd));
-		timer.schedule(cmd, Date.from(time.atZone(ZoneId.systemDefault()).toInstant()));
-	}
-
-	public void initialize() {
-		load();
-		int autoSaveMinutes = 30;
-		Bukkit.getScheduler().scheduleSyncRepeatingTask(Main.getPlugin(Main.class), this::save, 20 * 60,
-				20 * 60 * autoSaveMinutes);
-	}
-
-	public void disable() {
-		timer.purge();
-		timer.cancel();
-		save();
-	}
-
-	private static class PlannedCommand extends TimerTask {
-		private final String command;
-		private final UUID uuid;
-
-		PlannedCommand(String command, UUID uuid) {
-			this.command = command;
-			this.uuid = uuid;
-		}
-
-		@Override
-		public void run() {
-			Main plugin = Main.getPlugin(Main.class);
-			Bukkit.getScheduler().runTask(plugin, () -> {
-				World world = Bukkit.getWorlds().get(0);
-				Boolean value = world.getGameRuleValue(GameRule.SEND_COMMAND_FEEDBACK);
-				world.setGameRule(GameRule.SEND_COMMAND_FEEDBACK, false);
-				Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
-				world.setGameRule(GameRule.SEND_COMMAND_FEEDBACK, value);
-				plugin.planCommandExecutor.commands.removeIf(e -> e.getRight().equals(this));
-			});
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o)
-				return true;
-			if (o == null || getClass() != o.getClass())
-				return false;
-
-			PlannedCommand that = (PlannedCommand) o;
-
-			if (!command.equals(that.command))
-				return false;
-			return uuid.equals(that.uuid);
-		}
-
-		@Override
-		public int hashCode() {
-			int result = command.hashCode();
-			result = 31 * result + uuid.hashCode();
-			return result;
-		}
-	}
-
-	private void save() {
-		Main plugin = Main.getPlugin(Main.class);
-		try {
-			FileConfiguration plan = new YamlConfiguration();
-			File saveFile = new File(plugin.getDataFolder(), "plan.yml");
-			if (!saveFile.exists()) {
-				if (!plugin.getDataFolder().exists())
-					plugin.getDataFolder().mkdir();
-				saveFile.createNewFile();
+	public ArrayList<LocalTime> getArraysWithDate() {
+		ArrayList<LocalTime> dateListIn = new ArrayList<LocalTime>();
+		if (CONFIG_MODE == 1)
+			for (String stringTime : getConfig().getConfigurationSection("CommandsTime").getKeys(true))
+				dateListIn.addAll(parseStringToLocalTime(stringTime));
+		if (CONFIG_MODE == 2)
+			for (DayOfWeek day : DayOfWeek.values()) {
+				for (String stringTime : getConfig()
+						.getConfigurationSection("CommandsTime." + day.toString().toLowerCase()).getKeys(true))
+					dateListIn.addAll(parseStringToLocalTime(stringTime));
 			}
-			commands.forEach(pair -> {
-				String key = pair.getRight().uuid.toString();
-				String command = pair.getRight().command;
-				String time = pair.getLeft().format(formatter);
-				ConfigurationSection section = plan.createSection(key);
-				section.set("command", command);
-				section.set("time", time);
-			});
-			plan.save(saveFile);
-		} catch (IOException exception) {
-			plugin.getLogger().severe("Возникла ошибка при сохранении:");
-			exception.printStackTrace();
-		}
+		dateListIn = optimizeArrayList(dateListIn);
+		getLogger().info("Загруженное время: " + dateListIn);
+		return dateListIn;
 	}
 
-	private void load() {
-		Main plugin = Main.getPlugin(Main.class);
-		try {
-			File saveFile = new File(plugin.getDataFolder(), "plan.yml");
-			if (!saveFile.exists()) {
-				return;
+	public ArrayList<LocalTime> optimizeArrayList(ArrayList<LocalTime> collection) {
+		ArrayList<LocalTime> temp = new ArrayList<LocalTime>();
+		for (LocalTime time : collection)
+			if (!temp.contains(time))
+				temp.add(time);
+		return temp;
+	}
+
+	public ArrayList<LocalTime> parseStringToLocalTime(String stringTime) {
+		ArrayList<LocalTime> dateListIn = new ArrayList<LocalTime>();
+		String[] stringArrayTime = stringTime.split(":");
+		if (stringArrayTime.length >= 2) {
+			try {
+				int hour = Integer.parseInt(stringArrayTime[0]);
+				int minute = Integer.parseInt(stringArrayTime[1]);
+				dateListIn.add(LocalTime.of(hour, minute));
+			} catch (NumberFormatException | DateTimeException e) {
+				getLogger().warning("Не удалось считать время " + stringTime
+						+ "! Проверьте правильность конфига! \\n Время " + stringTime + " пропущено!");
 			}
-			FileConfiguration plan = new YamlConfiguration();
-			plan.load(saveFile);
-			plan.getKeys(false).forEach(uuid -> {
-				String command = plan.getString(uuid + ".command");
-				String timeString = plan.getString(uuid + ".time");
-				if (command == null || timeString == null)
-					return;
-				LocalDateTime time = LocalDateTime.parse(timeString, formatter);
-				PlannedCommand cmd = new PlannedCommand(command, UUID.fromString(uuid));
-				plan(cmd, time);
-			});
-			plan.save(saveFile);
-		} catch (IOException | InvalidConfigurationException exception) {
-			plugin.getLogger().severe("Возникла ошибка при загрузке команд с plan.yml:");
-			exception.printStackTrace();
-		}
+		} else
+			getLogger().warning("Не удалось считать время " + stringTime
+					+ "! Проверьте правильность конфига! \\n Время " + stringTime + " пропущено!");
+		return dateListIn;
 	}
 }
