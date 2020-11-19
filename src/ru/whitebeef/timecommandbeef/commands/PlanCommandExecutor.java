@@ -83,7 +83,7 @@ public class PlanCommandExecutor implements TabExecutor {
 				return new ArrayList<>();
 			}
 		default:
-			return null;
+			return new ArrayList<>();
 		}
 	}
 
@@ -217,7 +217,7 @@ public class PlanCommandExecutor implements TabExecutor {
 	private void load() {
 		Main plugin = Main.getPlugin(Main.class);
 		try {
-			File saveFile = new File(plugin.getDataFolder(), "plan.yaml");
+			File saveFile = new File(plugin.getDataFolder(), "plan.yml");
 			if (!saveFile.exists()) {
 				return;
 			}

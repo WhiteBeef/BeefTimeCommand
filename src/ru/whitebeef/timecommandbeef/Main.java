@@ -1,6 +1,7 @@
 package ru.whitebeef.timecommandbeef;
 
 import java.io.File;
+import java.io.IOException;
 import java.time.DateTimeException;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
@@ -11,6 +12,9 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.InvalidConfigurationException;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import ru.whitebeef.timecommandbeef.commands.PlanCommandExecutor;
@@ -20,7 +24,6 @@ public class Main extends JavaPlugin implements Runnable {
 	public PlanCommandExecutor planCommandExecutor;
 
 	public final Logger log = Logger.getLogger("Minecraft");
-	public final String PLUGIN_NAME = "[BeefTimeCommand] ";
 	public HashMap<LocalTime, Boolean> dateList = new HashMap<>();
 	public int CONFIG_MODE = 1;
 
@@ -28,7 +31,7 @@ public class Main extends JavaPlugin implements Runnable {
 	public void onEnable() {
 		File config = new File(getDataFolder() + File.separator + "config.yml");
 		if (!config.exists()) {
-			log.info(PLUGIN_NAME + "Конфиг не найден. Создаю новый");
+			getLogger().warning("Конфиг не найден. Создаю новый");
 			getConfig().options().copyDefaults(true);
 			saveDefaultConfig();
 		}
@@ -41,13 +44,37 @@ public class Main extends JavaPlugin implements Runnable {
 		planCommandExecutor.initialize();
 		super.getCommand("plancommand").setExecutor(planCommandExecutor);
 
-		log.info(PLUGIN_NAME + "Успешно включился");
+		Bukkit.getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
+			@Override
+			public void run() {
+				try {
+					FileConfiguration commands = new YamlConfiguration();
+					File saveFile = new File(getDataFolder(), "reloadcmds.yml");
+					if (!saveFile.exists()) {
+						getLogger().warning("Файл reloadcmds.yml не найден. Создаю новый");
+						saveFile.createNewFile();
+						commands.load(saveFile);
+						commands.set("commands", new ArrayList<>());
+						commands.save(saveFile);
+					}
+					commands.load(saveFile);
+					for (String command : commands.getStringList("commands"))
+						Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
+				} catch (IOException | InvalidConfigurationException exception) {
+					getLogger().severe("Возникла ошибка при загрузке команд с reloadcmds.yml:");
+					exception.printStackTrace();
+				}
+
+			}
+		}, 0l);
+
+		getLogger().info("Успешно включился");
 	}
 
 	@Override
 	public void onDisable() {
 		planCommandExecutor.disable();
-		log.info(PLUGIN_NAME + "Успешно выключился");
+		getLogger().info("Успешно выключился");
 	}
 
 	@Override
@@ -63,7 +90,6 @@ public class Main extends JavaPlugin implements Runnable {
 						@Override
 						public void run() {
 							dateList.put(date, false);
-							System.out.println(112);
 						}
 					}, 20 * 60L);
 				}
@@ -95,7 +121,7 @@ public class Main extends JavaPlugin implements Runnable {
 					dateListIn.addAll(parseStringToLocalTime(stringTime));
 			}
 		dateListIn = optimizeArrayList(dateListIn);
-		log.info(PLUGIN_NAME + "Загруженное время: " + dateListIn);
+		getLogger().info("Загруженное время: " + dateListIn);
 		return dateListIn;
 	}
 
@@ -116,11 +142,11 @@ public class Main extends JavaPlugin implements Runnable {
 				int minute = Integer.parseInt(stringArrayTime[1]);
 				dateListIn.add(LocalTime.of(hour, minute));
 			} catch (NumberFormatException | DateTimeException e) {
-				log.warning(PLUGIN_NAME + "Не удалось считать время " + stringTime
+				getLogger().warning("Не удалось считать время " + stringTime
 						+ "! Проверьте правильность конфига! \\n Время " + stringTime + " пропущено!");
 			}
 		} else
-			log.warning(PLUGIN_NAME + "Не удалось считать время " + stringTime
+			getLogger().warning("Не удалось считать время " + stringTime
 					+ "! Проверьте правильность конфига! \\n Время " + stringTime + " пропущено!");
 		return dateListIn;
 	}
