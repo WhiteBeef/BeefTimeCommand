@@ -43,8 +43,8 @@ public class PlanCommandExecutor implements TabExecutor {
 	private final Timer timer;
 	private final List<Pair<LocalDateTime, PlannedCommand>> commands = new LinkedList<>();
 
-	private static final List<String> digits;
-	private static final Map<String, Duration> timeUnits;
+	public static final List<String> digits;
+	public static final Map<String, Duration> timeUnits;
 
 	private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 	private static final Pattern timePattern = Pattern.compile("\\G([0-9]+[hmsdwy])");
@@ -66,7 +66,7 @@ public class PlanCommandExecutor implements TabExecutor {
 	}
 
 	@Override
-	public List<String> onTabComplete(@Nonnull CommandSender sender, @Nonnull Command cmd, @Nonnull String s,
+	public List<String> onTabComplete(@Nonnull CommandSender sender, @Nonnull Command cmd, @Nonnull String label,
 			@Nonnull String[] args) {
 		switch (args.length) {
 		case 0:
@@ -88,8 +88,9 @@ public class PlanCommandExecutor implements TabExecutor {
 	}
 
 	@Override
-	public boolean onCommand(@Nonnull CommandSender sender, @Nonnull Command cmd, @Nonnull String s,
+	public boolean onCommand(@Nonnull CommandSender sender, @Nonnull Command cmd, @Nonnull String label,
 			@Nonnull String[] args) {
+
 		if (args.length < 2)
 			return false;
 		LocalDateTime time = parseTime(args[0]);
@@ -97,6 +98,7 @@ public class PlanCommandExecutor implements TabExecutor {
 			return false;
 		String command = Arrays.stream(args).skip(1).collect(Collectors.joining(" "));
 		plan(command, time);
+
 		return true;
 	}
 
@@ -119,7 +121,26 @@ public class PlanCommandExecutor implements TabExecutor {
 		return duration.equals(Duration.ZERO) ? null : LocalDateTime.now().plus(duration);
 	}
 
-	private List<String> prefix(String prefix, Collection<String> collection) {
+	/*
+	 * @param s Время в формате 1h10m...
+	 * 
+	 * @return Время указанное в s в формате LocalDateTime. Если в s не время,
+	 * возвращает null
+	 */
+	@Nullable
+	public static long parseTimeFromStringToLongSeconds(String s) {
+		Duration duration = Duration.ZERO;
+		Matcher matcher = timePattern.matcher(s);
+		while (matcher.find()) {
+			String group = matcher.group();
+			Duration d = timeUnits.get(group.split("")[group.length() - 1]);
+			int multiplier = Integer.parseInt(group.substring(0, group.length() - 1));
+			duration = duration.plus(d.multipliedBy(multiplier));
+		}
+		return duration.toMillis() / 1000;
+	}
+
+	public static List<String> prefix(String prefix, Collection<String> collection) {
 		return collection.stream().map(s -> prefix + s).collect(Collectors.toList());
 	}
 
@@ -156,15 +177,19 @@ public class PlanCommandExecutor implements TabExecutor {
 
 		@Override
 		public void run() {
-			Main plugin = Main.getPlugin(Main.class);
-			Bukkit.getScheduler().runTask(plugin, () -> {
-				World world = Bukkit.getWorlds().get(0);
-				Boolean value = world.getGameRuleValue(GameRule.SEND_COMMAND_FEEDBACK);
-				world.setGameRule(GameRule.SEND_COMMAND_FEEDBACK, false);
-				Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
-				world.setGameRule(GameRule.SEND_COMMAND_FEEDBACK, value);
-				plugin.planCommandExecutor.commands.removeIf(e -> e.getRight().equals(this));
-			});
+			try {
+				Main plugin = Main.getPlugin(Main.class);
+				Bukkit.getScheduler().runTask(plugin, () -> {
+					World world = Bukkit.getWorlds().get(0);
+					Boolean value = world.getGameRuleValue(GameRule.SEND_COMMAND_FEEDBACK);
+					world.setGameRule(GameRule.SEND_COMMAND_FEEDBACK, false);
+					Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
+					world.setGameRule(GameRule.SEND_COMMAND_FEEDBACK, value);
+					plugin.planCommandExecutor.commands.removeIf(e -> e.getRight().equals(this));
+				});
+			} catch (IllegalStateException e) {
+				return;
+			}
 		}
 
 		@Override

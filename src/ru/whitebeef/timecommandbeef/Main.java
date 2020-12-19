@@ -18,6 +18,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import ru.whitebeef.timecommandbeef.commands.PlanCommandExecutor;
+import ru.whitebeef.timecommandbeef.commands.RepeatCommandExecutor;
 
 public class Main extends JavaPlugin implements Runnable {
 
@@ -31,7 +32,7 @@ public class Main extends JavaPlugin implements Runnable {
 	public void onEnable() {
 		File config = new File(getDataFolder() + File.separator + "config.yml");
 		if (!config.exists()) {
-			getLogger().warning("РљРѕРЅС„РёРі РЅРµ РЅР°Р№РґРµРЅ. РЎРѕР·РґР°СЋ РЅРѕРІС‹Р№");
+			getLogger().warning("Конфиг не найден. Создаю новый");
 			getConfig().options().copyDefaults(true);
 			saveDefaultConfig();
 		}
@@ -43,7 +44,12 @@ public class Main extends JavaPlugin implements Runnable {
 		planCommandExecutor = new PlanCommandExecutor();
 		planCommandExecutor.initialize();
 		super.getCommand("plancommand").setExecutor(planCommandExecutor);
+		super.getCommand("repeatcommand").setExecutor(new RepeatCommandExecutor());
+		onServerLoad();
+		getLogger().info("Успешно включился");
+	}
 
+	private void onServerLoad() {
 		Bukkit.getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
 			@Override
 			public void run() {
@@ -51,7 +57,7 @@ public class Main extends JavaPlugin implements Runnable {
 					FileConfiguration commands = new YamlConfiguration();
 					File saveFile = new File(getDataFolder(), "reloadcmds.yml");
 					if (!saveFile.exists()) {
-						getLogger().warning("Р¤Р°Р№Р» reloadcmds.yml РЅРµ РЅР°Р№РґРµРЅ. РЎРѕР·РґР°СЋ РЅРѕРІС‹Р№");
+						getLogger().warning("Файл reloadcmds.yml не найден. Создаю новый");
 						saveFile.createNewFile();
 						commands.load(saveFile);
 						commands.set("commands", new ArrayList<>());
@@ -61,20 +67,18 @@ public class Main extends JavaPlugin implements Runnable {
 					for (String command : commands.getStringList("commands"))
 						Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
 				} catch (IOException | InvalidConfigurationException exception) {
-					getLogger().severe("Р’РѕР·РЅРёРєР»Р° РѕС€РёР±РєР° РїСЂРё Р·Р°РіСЂСѓР·РєРµ РєРѕРјР°РЅРґ СЃ reloadcmds.yml:");
+					getLogger().severe("Возникла ошибка при загрузке команд с reloadcmds.yml:");
 					exception.printStackTrace();
 				}
 
 			}
 		}, 0l);
-
-		getLogger().info("РЈСЃРїРµС€РЅРѕ РІРєР»СЋС‡РёР»СЃСЏ");
 	}
 
 	@Override
 	public void onDisable() {
 		planCommandExecutor.disable();
-		getLogger().info("РЈСЃРїРµС€РЅРѕ РІС‹РєР»СЋС‡РёР»СЃСЏ");
+		getLogger().info("Успешно выключился");
 	}
 
 	@Override
@@ -121,7 +125,7 @@ public class Main extends JavaPlugin implements Runnable {
 					dateListIn.addAll(parseStringToLocalTime(stringTime));
 			}
 		dateListIn = optimizeArrayList(dateListIn);
-		getLogger().info("Р—Р°РіСЂСѓР¶РµРЅРЅРѕРµ РІСЂРµРјСЏ: " + dateListIn);
+		getLogger().info("Загруженное время: " + dateListIn);
 		return dateListIn;
 	}
 
@@ -138,16 +142,15 @@ public class Main extends JavaPlugin implements Runnable {
 		String[] stringArrayTime = stringTime.split(":");
 		if (stringArrayTime.length >= 2) {
 			try {
-				int hour = Integer.parseInt(stringArrayTime[0]);
-				int minute = Integer.parseInt(stringArrayTime[1]);
-				dateListIn.add(LocalTime.of(hour, minute));
+				dateListIn
+						.add(LocalTime.of(Integer.parseInt(stringArrayTime[0]), Integer.parseInt(stringArrayTime[1])));
 			} catch (NumberFormatException | DateTimeException e) {
-				getLogger().warning("РќРµ СѓРґР°Р»РѕСЃСЊ СЃС‡РёС‚Р°С‚СЊ РІСЂРµРјСЏ " + stringTime
-						+ "! РџСЂРѕРІРµСЂСЊС‚Рµ РїСЂР°РІРёР»СЊРЅРѕСЃС‚СЊ РєРѕРЅС„РёРіР°! \\n Р’СЂРµРјСЏ " + stringTime + " РїСЂРѕРїСѓС‰РµРЅРѕ!");
+				getLogger().warning("Не удалось считать время " + stringTime
+						+ "! Проверьте правильность конфига! \\n Время " + stringTime + " пропущено!");
 			}
 		} else
-			getLogger().warning("РќРµ СѓРґР°Р»РѕСЃСЊ СЃС‡РёС‚Р°С‚СЊ РІСЂРµРјСЏ " + stringTime
-					+ "! РџСЂРѕРІРµСЂСЊС‚Рµ РїСЂР°РІРёР»СЊРЅРѕСЃС‚СЊ РєРѕРЅС„РёРіР°! \\n Р’СЂРµРјСЏ " + stringTime + " РїСЂРѕРїСѓС‰РµРЅРѕ!");
+			getLogger().warning("Не удалось считать время " + stringTime
+					+ "! Проверьте правильность конфига! \\n Время " + stringTime + " пропущено!");
 		return dateListIn;
 	}
 }
