@@ -18,12 +18,14 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import ru.whitebeef.timecommandbeef.commands.PlanCommandExecutor;
+import ru.whitebeef.timecommandbeef.commands.PlanCommandFromExecutor;
 import ru.whitebeef.timecommandbeef.commands.RepeatCommandExecutor;
+import ru.whitebeef.timecommandbeef.commands.utils.CommandPlanner;
 
 public class Main extends JavaPlugin implements Runnable {
 
 	public PlanCommandExecutor planCommandExecutor;
-
+	public CommandPlanner commandPlanner;
 	public final Logger log = Logger.getLogger("Minecraft");
 	public HashMap<LocalTime, Boolean> dateList = new HashMap<>();
 	public int CONFIG_MODE = 1;
@@ -42,9 +44,13 @@ public class Main extends JavaPlugin implements Runnable {
 		Bukkit.getScheduler().scheduleSyncRepeatingTask(this, this, 20 * 60L, 20L);
 
 		planCommandExecutor = new PlanCommandExecutor();
-		planCommandExecutor.initialize();
+		commandPlanner = new CommandPlanner();
+
+		commandPlanner.initialize();
 		super.getCommand("plancommand").setExecutor(planCommandExecutor);
 		super.getCommand("repeatcommand").setExecutor(new RepeatCommandExecutor());
+		super.getCommand("plancommandfrom").setExecutor(new PlanCommandFromExecutor());
+
 		onServerLoad();
 		getLogger().info("Успешно включился");
 	}
@@ -77,7 +83,7 @@ public class Main extends JavaPlugin implements Runnable {
 
 	@Override
 	public void onDisable() {
-		planCommandExecutor.disable();
+		commandPlanner.disable();
 		getLogger().info("Успешно выключился");
 	}
 

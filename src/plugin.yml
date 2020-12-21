@@ -1,5 +1,5 @@
 name: BeefTimeCommand
-version: 1.2.0
+version: 1.2.1
 main: ru.whitebeef.timecommandbeef.Main
 api-version: 1.13
 author: WhiteBeef
@@ -8,6 +8,10 @@ commands:
     usage: /<command> <time> <plancommand>
     description: Запланировать команду
     permission: beeftimecommand.plancommand
+  plancommandfrom:
+    usage: /<command> <timefrom> <time> <plancommand>
+    description: Запланировать команду начиная с какого-то времени
+    permission: beeftimecommand.plancommandfrom
   repeatcommand:
       usage: /<command> <starttime> <repeattime> <plancommand>
       description: Запланировать повторяющуюся команду
@@ -17,6 +21,8 @@ permissions:
     description: Использование команды /plancommand
     default: op
   beeftimecommand.repeatcommand:
-    usage: /<command> <timestart> <timerepeat> <plancommand>
     description: Запланировать команду
-    permission: beeftimecommand.repeatcommand
+    default: op
+  beeftimecommand.plancommandfrom:
+    description: Использование команды /plancommandfrom
+    default: op
